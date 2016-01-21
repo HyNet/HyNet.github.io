@@ -199,8 +199,8 @@
             
               
                 
-                <a class="post-title-link" href="/2016/01/18/flaskrout/" itemprop="url">
-                  flask route设计思路
+                <a class="post-title-link" href="/2016/01/21/epolletwithnobloking/" itemprop="url">
+                  LibXel开发记录：Epoll 与各种服务端网络编程模型
                 </a>
               
             
@@ -210,8 +210,8 @@
         <div class="post-meta">
           <span class="post-time">
             发表于
-            <time itemprop="dateCreated" datetime="2016-01-18T19:55:00+08:00" content="2016-01-18">
-              2016-01-18
+            <time itemprop="dateCreated" datetime="2016-01-21T20:35:00+08:00" content="2016-01-21">
+              2016-01-21
             </time>
           </span>
 
@@ -220,8 +220,8 @@
               &nbsp; | &nbsp; 分类于
               
                 <span itemprop="about" itemscope itemtype="https://schema.org/Thing">
-                  <a href="/categories/python-flask/" itemprop="url" rel="index">
-                    <span itemprop="name">python, flask</span>
+                  <a href="/categories/Linux-Epoll/" itemprop="url" rel="index">
+                    <span itemprop="name">Linux, Epoll</span>
                   </a>
                 </span>
 
@@ -252,12 +252,11 @@
         
           <span itemprop="articleBody">
             
-            引言本文主要梳理了flask源码中route的设计思路。首先，从WSGI协议的角度介绍flask route的作用；其次，详细讲解如何借助werkzeug库的Map、Rule实现route；最后，梳理了一次完整的http请求中route的完整流程。
-flask route 设计思路源码版本说明本文参
+            Epoll的LT和ET模式Epoll有两种事件触发模式：level-triger和edge-triger。当调用epoll_wait阻塞监听事件的时候：如果设定事件触发方式为：level-triger则表示只要监听的fd中有一个处于readable/writeable状态，那么此时epoll_wai
             ...
           </span>
           <div class="post-more-link text-center">
-            <a class="btn" href="/2016/01/18/flaskrout/#more" rel="contents">
+            <a class="btn" href="/2016/01/21/epolletwithnobloking/#more" rel="contents">
               阅读全文 &raquo;
             </a>
           </div>
@@ -283,10 +282,6 @@ flask route 设计思路源码版本说明本文参
   </section>
 
   
-  <nav class="pagination">
-    <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><a class="extend next" rel="next" href="/page/2/"><i class="fa fa-angle-right"></i></a>
-  </nav>
-
 
 
         </div>
@@ -325,14 +320,14 @@ flask route 设计思路源码版本说明本文参
         <nav class="site-state motion-element">
           <div class="site-state-item site-state-posts">
             <a href="/archives">
-              <span class="site-state-item-count">9</span>
+              <span class="site-state-item-count">10</span>
               <span class="site-state-item-name">日志</span>
             </a>
           </div>
 
           <div class="site-state-item site-state-categories">
             
-              <span class="site-state-item-count">3</span>
+              <span class="site-state-item-count">4</span>
               <span class="site-state-item-name">分类</span>
               
           </div>

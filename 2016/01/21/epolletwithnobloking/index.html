@@ -1,0 +1,647 @@
+<!doctype html>
+<html class="theme-next   use-motion ">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+
+
+
+
+
+
+
+
+
+  <link href="/vendors/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css"/>
+
+
+
+
+  <link href="//fonts.googleapis.com/css?family=Lato:300,400,700,400italic&subset=latin,latin-ext" rel="stylesheet" type="text/css">
+
+
+
+<link href="/vendors/font-awesome/css/font-awesome.min.css?v=4.4.0" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=0.4.5.2" rel="stylesheet" type="text/css" />
+
+
+  <meta name="keywords" content="Hexo, NexT" />
+
+
+
+
+
+
+
+
+  <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico?v=0.4.5.2" />
+
+
+
+
+
+
+<meta name="description" content="Epoll的LT和ET模式Epoll有两种事件触发模式：level-triger和edge-triger。当调用epoll_wait阻塞监听事件的时候：如果设定事件触发方式为：level-triger则表示只要监听的fd中有一个处于readable/writeable状态，那么此时epoll_wait返回该fd;如果设定事件触发方式为：edge-triger则表示只有监听的fd中有一个发生unre">
+<meta property="og:type" content="article">
+<meta property="og:title" content="LibXel开发记录：Epoll 与各种服务端网络编程模型">
+<meta property="og:url" content="https://HyNet.github.io/2016/01/21/epolletwithnobloking/index.html">
+<meta property="og:site_name" content="NoteBook < mind">
+<meta property="og:description" content="Epoll的LT和ET模式Epoll有两种事件触发模式：level-triger和edge-triger。当调用epoll_wait阻塞监听事件的时候：如果设定事件触发方式为：level-triger则表示只要监听的fd中有一个处于readable/writeable状态，那么此时epoll_wait返回该fd;如果设定事件触发方式为：edge-triger则表示只有监听的fd中有一个发生unre">
+<meta property="og:updated_time" content="2016-01-21T14:58:00.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="LibXel开发记录：Epoll 与各种服务端网络编程模型">
+<meta name="twitter:description" content="Epoll的LT和ET模式Epoll有两种事件触发模式：level-triger和edge-triger。当调用epoll_wait阻塞监听事件的时候：如果设定事件触发方式为：level-triger则表示只要监听的fd中有一个处于readable/writeable状态，那么此时epoll_wait返回该fd;如果设定事件触发方式为：edge-triger则表示只有监听的fd中有一个发生unre">
+
+
+
+<script type="text/javascript" id="hexo.configuration">
+  var CONFIG = {
+    scheme: 'Mist',
+    sidebar: 'post',
+    motion: true
+  };
+</script>
+
+  <title> LibXel开发记录：Epoll 与各种服务端网络编程模型 | NoteBook < mind </title>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  <!--[if lte IE 8]>
+  <div style=' clear: both; height: 59px; padding:0 0 0 15px; position: relative;margin:0 auto;'>
+    <a href="http://windows.microsoft.com/en-US/internet-explorer/products/ie/home?ocid=ie6_countdown_bannercode">
+      <img src="http://7u2nvr.com1.z0.glb.clouddn.com/picouterie.jpg" border="0" height="42" width="820"
+           alt="You are using an outdated browser. For a faster, safer browsing experience, upgrade for free today or use other browser ,like chrome firefox safari."
+           style='margin-left:auto;margin-right:auto;display: block;'/>
+    </a>
+  </div>
+<![endif]-->
+  
+
+
+
+
+
+
+  <div class="container one-column page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-meta ">
+  
+
+  <div class="custom-logo-site-title">
+    <a href="/"  class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <span class="site-title">NoteBook < mind</span>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+  <p class="site-subtitle">zhao的整理笔记</p>
+</div>
+
+<div class="site-nav-toggle">
+  <button>
+    <span class="btn-bar"></span>
+    <span class="btn-bar"></span>
+    <span class="btn-bar"></span>
+  </button>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu ">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-home fa-fw"></i> <br />
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives" rel="section">
+            
+              <i class="menu-item-icon fa fa-archive fa-fw"></i> <br />
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+      
+    </ul>
+  
+
+  
+</nav>
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div id="content" class="content">
+          
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal " itemscope itemtype="http://schema.org/Article">
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+            
+            
+              
+                LibXel开发记录：Epoll 与各种服务端网络编程模型
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            发表于
+            <time itemprop="dateCreated" datetime="2016-01-21T20:35:00+08:00" content="2016-01-21">
+              2016-01-21
+            </time>
+          </span>
+
+          
+            <span class="post-category" >
+              &nbsp; | &nbsp; 分类于
+              
+                <span itemprop="about" itemscope itemtype="https://schema.org/Thing">
+                  <a href="/categories/Linux-Epoll/" itemprop="url" rel="index">
+                    <span itemprop="name">Linux, Epoll</span>
+                  </a>
+                </span>
+
+                
+                
+
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+
+        </div>
+      </header>
+    
+
+
+    <div class="post-body">
+
+      
+      
+
+      
+        <span itemprop="articleBody"><h2 id="Epoll_u7684LT_u548CET_u6A21_u5F0F"><a href="#Epoll_u7684LT_u548CET_u6A21_u5F0F" class="headerlink" title="Epoll的LT和ET模式"></a>Epoll的LT和ET模式</h2><p>Epoll有两种事件触发模式：level-triger和edge-triger。<br>当调用<code>epoll_wait</code>阻塞监听事件的时候：<br>如果设定事件触发方式为：level-triger则表示只要监听的<code>fd</code>中有一个处于<code>readable/writeable</code>状态，那么此时<code>epoll_wait</code>返回该<code>fd</code>;<br>如果设定事件触发方式为：edge-triger则表示只有监听的<code>fd</code>中有一个发生<code>unreadable--&gt;readable</code>或者<code>unwriteable--&gt;writable</code>的状态变化，此时<code>epoll_wait</code>才返回<code>fd</code>。</p>
+<h2 id="u8C03_u7528epoll_wait_u540E_u7684_u5904_u7406_u903B_u8F91"><a href="#u8C03_u7528epoll_wait_u540E_u7684_u5904_u7406_u903B_u8F91" class="headerlink" title="调用epoll_wait后的处理逻辑"></a>调用epoll_wait后的处理逻辑</h2><p>对于一个进程而言，socket编程时使用的<code>fd</code>也在进程的打开文件列表中，特殊之处在于，通过socket接口打开的<code>fd</code>属于socketfs这个特殊的内存文件系统。</p>
+<p>通常，首先调用<code>socket</code>在socketfs文件系统中创建一个文件节点，也就打开了一个文件。<br>然后依次调用<code>bind</code>，<code>listen</code>，初始化这个文件节点，同时，从tcp状态转移的角度而言，此时处于<code>LISTEN</code>状态。<br>当配合epoll使用时，通常在此处将这个<code>fd</code>加入epoll监听，监听的事件为<strong>读事件</strong>，当事件被监听到以后，触发的回调操作为<strong>accept操作</strong>。</p>
+<p><strong>accept操作</strong>的任务是：</p>
+<ol>
+<li>调用<code>accept</code>函数，接收来自客户端的请求，同时打开一个新的<code>fd</code>作为客户端的连接。</li>
+<li>此时可以有两种选择：<ol>
+<li>直接调用<code>read</code>函数：这样，不论是否阻塞，在read过程中整个服务端是不能accept，也就是不能接受客户端的请求的。</li>
+<li>将新的<code>fd</code>加入epoll监听，即添加<code>连接fd的read事件</code>：好处在于accept函数在处理完添加监听逻辑后，立刻可以接受新的请求，也就增加了服务端的吞吐量。</li>
+</ol>
+</li>
+</ol>
+<p><strong>连接fd的read事件</strong>的任务：</p>
+<ol>
+<li>调用<code>recv/read</code>函数，读取socket接收缓冲区中的数据。</li>
+<li>处理read之后的逻辑：例如：业务逻辑处理，进行写操作等等；</li>
+<li>关闭表示该连接的<code>fd</code>，当然这一步步一定在此处做，但是一定要做。</li>
+</ol>
+<h2 id="u4F7F_u7528epoll_u4E0D_u80FD_u89E3_u51B3_u963B_u585E_u95EE_u9898"><a href="#u4F7F_u7528epoll_u4E0D_u80FD_u89E3_u51B3_u963B_u585E_u95EE_u9898" class="headerlink" title="使用epoll不能解决阻塞问题"></a>使用epoll不能解决阻塞问题</h2><p>epoll作为内核提供的<code>I/O复用机制</code>不能解决阻塞带来的问题，它能解决的是在进程在发生阻塞操作后，可以进行其它的操作。<br>会发生阻塞的操作包括：accept，read／recv，write／send</p>
+<p>例如：当没有连接发生的时候，accept会阻塞在accept调用处，此时，如果是一个来自客户端的新连接，则可以很快的响应；但是如果是一个已经建立的连接上有了可以读取的数据，则不能调用read去读取。这样，服务端能更快的响应连接，但是却不能更快的处理客户端的请求。</p>
+<p>使用了epoll之后，将监听客户端的连接和请求的任务统一的放到<code>epoll_wait</code>中统一处理。<br><code>epoll_wait</code>根据请求的事件类型的不同，调用不同的处理逻辑，这样至少能够做到响应连接和处理客户端的请求之间的平衡。</p>
+<p><strong>但是，但是</strong>，如果在进程中，<code>epoll_wait</code>在调用不同的处理逻辑时，其处理函数依然是阻塞的。<br>无法在处理完成后，尽快的回到<code>epoll_wait</code>处，继续监听事件，那么，这个服务端响应的速度依然是有问题的。</p>
+<p>为了解决这个阻塞带来的问题，产生了各种服务端网络编程的模型：</p>
+<h2 id="u670D_u52A1_u7AEF_u7F51_u7EDC_u7F16_u7A0B_u6A21_u578B"><a href="#u670D_u52A1_u7AEF_u7F51_u7EDC_u7F16_u7A0B_u6A21_u578B" class="headerlink" title="服务端网络编程模型"></a>服务端网络编程模型</h2><p>常见的模型有5种：</p>
+<h3 id="u5355_u8FDB_u7A0B_u5355_u7EBF_u7A0B_u540C_u6B65_u963B_u585E_u6A21_u578B"><a href="#u5355_u8FDB_u7A0B_u5355_u7EBF_u7A0B_u540C_u6B65_u963B_u585E_u6A21_u578B" class="headerlink" title="单进程单线程同步阻塞模型"></a>单进程单线程同步阻塞模型</h3><p>这种模型其实就是上面介绍的没有使用epoll的方式：<br>其特点是：在单进程中使用循环依次调用accept，read，write<br>如果，其中有一个函数调用发生阻塞，则整个进程阻塞在该处，无法响应其它客户端请求。</p>
+<h3 id="u591A_u8FDB_u7A0B_uFF08_u6C60_uFF09_u963B_u585E_u6A21_u578B"><a href="#u591A_u8FDB_u7A0B_uFF08_u6C60_uFF09_u963B_u585E_u6A21_u578B" class="headerlink" title="多进程（池）阻塞模型"></a>多进程（池）阻塞模型</h3><p>这种模型是对上面模型的改进：<br>既然，accept/read/write调用如果发生阻塞会阻塞整个进程，进而导致其它调用无法立刻响应，那么，就将read／write和accept放到不同的进程中。<br>这样，如果read／write所在的进程被阻塞，那么也不会影响accept所在的进程。故而，响应连接和处理请求信心之间的到了比较好的平衡。</p>
+<p>这个想法非常的棒。但是，这种做法的缺点在于：如果每个客户端请求对应一个进程，那么，进程数目与客户端的请求之间呈正相关。<br>进程的开销还是比较大的，因而，在应付大量客户端请求上，这种模型不合适。尤其是在存在大量短连接的情况下。</p>
+<p>为了解决进程频繁创建带来的开销，可以采用<strong>批发－零售</strong>的办法：预先创建一个进程池，当需要的时候，从进程池中取用，结束后返还给进程池。<br>这种办法在一定程度上缓解了问题，但是没有解决问题。<br>池子的办法是否有效关键在于取用和返还的速率比，如果这个比值很大，则这种办法不适用。</p>
+<h3 id="u591A_u7EBF_u7A0B_uFF08_u6C60_uFF09_u963B_u585E_u6A21_u578B"><a href="#u591A_u7EBF_u7A0B_uFF08_u6C60_uFF09_u963B_u585E_u6A21_u578B" class="headerlink" title="多线程（池）阻塞模型"></a>多线程（池）阻塞模型</h3><p>多线程（池）阻塞模型是多进程（池）阻塞模型的线程版。这个模型的想法是通过使用更加轻量级的线程来缓解进程大量的创建和销毁带来的系统开销。</p>
+<h3 id="I/O_u590D_u7528_u6A21_u578B"><a href="#I/O_u590D_u7528_u6A21_u578B" class="headerlink" title="I/O复用模型"></a>I/O复用模型</h3><p>I/O复用机制包括select/poll/epoll。<br>在我看来，I/O复用并不算一个独立的模型，作为一个机制，它的作用是将监听事件的任务由原来的accept／read／write变成了<code>epoll_wait</code>，使得服务进程的响应连接和处理客户端的信息不再有先后的优先级。<br>因此，I/O复用机制可以结合各种模型使用。</p>
+<p>比如，在单进程单线程同步阻塞模型中，可以使用<code>epoll</code>，利用<code>epoll_wait</code>阻塞监听各种类型的事件，如果是accept事件，则调用accept处理逻辑，如果是read／write事件则调用对应的逻辑。在逻辑上，accept和read／write不在互相阻塞。</p>
+<p>再比如，在多进程（线程）阻塞模型中，将I/O复用机制，比如epoll，单独放到一个进程（线程）中，同时，将accept的监听事件注册到该epoll上。<br>一般，称监听accept事件的epoll所在的进程（线程）为main reactor<br>同时，还需要一个新的进程中创建一个新的epoll用来监听read/write事件，这个进程称为sub reactor<br>如果，客户端有accept事件到来，则main reactor中，调用accept处理函数。<br>accept处理函数调用accept获取客户端连接的<code>fd</code>，并将这个<code>fd</code>的read／write事件注册到sub reactor中。<br>sub reactor负责监听客户端连接<code>fd</code>的read/write事件，一旦有事件发生，则从进程（线程）池中取一个进程（线程），用来处理read／write业务逻辑。</p>
+<p>这就是所谓的reactor模型，也是<code>netty</code>采用的理论模型。</p>
+<h3 id="I/O_u590D_u7528_uFF0B_u975E_u963B_u585E_u6A21_u578B"><a href="#I/O_u590D_u7528_uFF0B_u975E_u963B_u585E_u6A21_u578B" class="headerlink" title="I/O复用＋非阻塞模型"></a>I/O复用＋非阻塞模型</h3><p>在单进程单线程同步阻塞模型中，如果加入I/O复用机制，实际上就变成了异步阻塞模型。<br>在异步阻塞模型中，虽然accept和read事件的到来先后不会互相阻塞，但是如果accept处理逻辑和read处理逻辑中发生阻塞，那么整个进程发生阻塞。<br>因此，如果将accept和read设置成非阻塞，则整个进程都不会发生阻塞。</p>
+<p><code>nginx</code>采用的就是这种理论模型，这种模型的编程比较麻烦，除了需要处理accept和read在非阻塞时立即返回的情况外，还需要保证在业务逻辑中，没有大量耗时的操作。<br>因此，<code>nginx</code>在实际中采用的是<code>master + multi worker</code>的做法。即使如此，在编写<code>nginx</code>模块时，仍然要注意阻塞的情况才能实现高效。</p>
+</span>
+      
+    </div>
+
+    <footer class="post-footer">
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2016/01/18/flaskrout/" rel="next" title="flask route设计思路">
+                <i class="fa fa-chevron-left"></i> flask route设计思路
+              </a>
+            
+          </div>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+        </div>
+
+        
+
+
+        
+  <div class="comments" id="comments">
+    
+  </div>
+
+
+      </div>
+
+      
+        
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap" >
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview sidebar-panel ">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+          <img class="site-author-image" src="/images/default_avatar.jpg" alt="zhao" itemprop="image"/>
+          <p class="site-author-name" itemprop="name">zhao</p>
+        </div>
+        <p class="site-description motion-element" itemprop="description">zhao的整理笔记</p>
+        <nav class="site-state motion-element">
+          <div class="site-state-item site-state-posts">
+            <a href="/archives">
+              <span class="site-state-item-count">10</span>
+              <span class="site-state-item-name">日志</span>
+            </a>
+          </div>
+
+          <div class="site-state-item site-state-categories">
+            
+              <span class="site-state-item-count">4</span>
+              <span class="site-state-item-name">分类</span>
+              
+          </div>
+
+          <div class="site-state-item site-state-tags">
+            
+              <span class="site-state-item-count">0</span>
+              <span class="site-state-item-name">标签</span>
+              
+          </div>
+
+        </nav>
+
+        
+
+        <div class="links-of-author motion-element">
+          
+        </div>
+
+        
+        
+
+        <div class="links-of-author motion-element">
+          
+        </div>
+
+      </section>
+
+      
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc-indicator-top post-toc-indicator">
+            <i class="fa fa-angle-double-up"></i>
+          </div>
+          <div class="post-toc">
+            
+              
+            
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Epoll_u7684LT_u548CET_u6A21_u5F0F"><span class="nav-number">1.</span> <span class="nav-text">Epoll的LT和ET模式</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#u8C03_u7528epoll_wait_u540E_u7684_u5904_u7406_u903B_u8F91"><span class="nav-number">2.</span> <span class="nav-text">调用epoll_wait后的处理逻辑</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#u4F7F_u7528epoll_u4E0D_u80FD_u89E3_u51B3_u963B_u585E_u95EE_u9898"><span class="nav-number">3.</span> <span class="nav-text">使用epoll不能解决阻塞问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#u670D_u52A1_u7AEF_u7F51_u7EDC_u7F16_u7A0B_u6A21_u578B"><span class="nav-number">4.</span> <span class="nav-text">服务端网络编程模型</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#u5355_u8FDB_u7A0B_u5355_u7EBF_u7A0B_u540C_u6B65_u963B_u585E_u6A21_u578B"><span class="nav-number">4.1.</span> <span class="nav-text">单进程单线程同步阻塞模型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#u591A_u8FDB_u7A0B_uFF08_u6C60_uFF09_u963B_u585E_u6A21_u578B"><span class="nav-number">4.2.</span> <span class="nav-text">多进程（池）阻塞模型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#u591A_u7EBF_u7A0B_uFF08_u6C60_uFF09_u963B_u585E_u6A21_u578B"><span class="nav-number">4.3.</span> <span class="nav-text">多线程（池）阻塞模型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#I/O_u590D_u7528_u6A21_u578B"><span class="nav-number">4.4.</span> <span class="nav-text">I/O复用模型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#I/O_u590D_u7528_uFF0B_u975E_u963B_u585E_u6A21_u578B"><span class="nav-number">4.5.</span> <span class="nav-text">I/O复用＋非阻塞模型</span></a></li></ol></li></ol></div>
+            
+          </div>
+          <div class="post-toc-indicator-bottom post-toc-indicator">
+            <i class="fa fa-angle-double-down"></i>
+          </div>
+        </section>
+      
+
+    </div>
+  </aside>
+
+
+      
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright" >
+  
+  &copy; 
+  <span itemprop="copyrightYear">2016</span>
+  <span class="with-love">
+    <i class="icon-next-heart fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">zhao</span>
+</div>
+
+<div class="powered-by">
+  由 <a class="theme-link" href="http://hexo.io">Hexo</a> 强力驱动
+</div>
+
+<div class="theme-info">
+  主题 -
+  <a class="theme-link" href="https://github.com/iissnan/hexo-theme-next">
+    NexT.Mist
+  </a>
+</div>
+
+
+
+      </div>
+    </footer>
+
+    <div class="back-to-top"></div>
+  </div>
+
+  <script type="text/javascript" src="/vendors/jquery/index.js?v=2.1.3"></script>
+
+  
+  
+
+  
+    
+    
+
+  
+
+
+  
+
+  
+  <script type="text/javascript" src="/vendors/fancybox/source/jquery.fancybox.pack.js"></script>
+  <script type="text/javascript" src="/js/fancy-box.js?v=0.4.5.2"></script>
+
+
+  <script type="text/javascript" src="/js/helpers.js?v=0.4.5.2"></script>
+  <script type="text/javascript" src="/vendors/velocity/velocity.min.js"></script>
+<script type="text/javascript" src="/vendors/velocity/velocity.ui.min.js"></script>
+
+<script type="text/javascript" src="/js/motion.js?v=0.4.5.2" id="motion.global"></script>
+
+
+  <script type="text/javascript" src="/vendors/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  <script type="text/javascript" src="/vendors/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+
+  
+  
+<script type="text/javascript" src="/js/bootstrap.scrollspy.js?v=0.4.5.2" id="bootstrap.scrollspy.custom"></script>
+
+
+<script type="text/javascript" id="sidebar.toc.highlight">
+  $(document).ready(function () {
+    var tocSelector = '.post-toc';
+    var $tocSelector = $(tocSelector);
+    var activeCurrentSelector = '.active-current';
+
+    $tocSelector
+      .on('activate.bs.scrollspy', function () {
+        var $currentActiveElement = $(tocSelector + ' .active').last();
+
+        removeCurrentActiveClass();
+        $currentActiveElement.addClass('active-current');
+
+        $tocSelector[0].scrollTop = $currentActiveElement.position().top;
+      })
+      .on('clear.bs.scrollspy', function () {
+        removeCurrentActiveClass();
+      });
+
+    function removeCurrentActiveClass () {
+      $(tocSelector + ' ' + activeCurrentSelector)
+        .removeClass(activeCurrentSelector.substring(1));
+    }
+
+    function processTOC () {
+      getTOCMaxHeight();
+      toggleTOCOverflowIndicators();
+    }
+
+    function getTOCMaxHeight () {
+      var height = $('.sidebar').height() -
+                   $tocSelector.position().top -
+                   $('.post-toc-indicator-bottom').height();
+
+      $tocSelector.css('height', height);
+
+      return height;
+    }
+
+    function toggleTOCOverflowIndicators () {
+      tocOverflowIndicator(
+        '.post-toc-indicator-top',
+        $tocSelector.scrollTop() > 0 ? 'show' : 'hide'
+      );
+
+      tocOverflowIndicator(
+        '.post-toc-indicator-bottom',
+        $tocSelector.scrollTop() >= $tocSelector.find('ol').height() - $tocSelector.height() ? 'hide' : 'show'
+      )
+    }
+
+    $(document).on('sidebar.motion.complete', function () {
+      processTOC();
+    });
+
+    $('body').scrollspy({ target: tocSelector });
+    $(window).on('resize', function () {
+      if ( $('.sidebar').hasClass('sidebar-active') ) {
+        processTOC();
+      }
+    });
+
+    onScroll($tocSelector);
+
+    function onScroll (element) {
+      element.on('mousewheel DOMMouseScroll', function (event) {
+          var oe = event.originalEvent;
+          var delta = oe.wheelDelta || -oe.detail;
+
+          this.scrollTop += ( delta < 0 ? 1 : -1 ) * 30;
+          event.preventDefault();
+
+          toggleTOCOverflowIndicators();
+      });
+    }
+
+    function tocOverflowIndicator (indicator, action) {
+      var $indicator = $(indicator);
+      var opacity = action === 'show' ? 1 : 0;
+      $indicator.velocity ?
+        $indicator.velocity('stop').velocity({
+          opacity: opacity
+        }, { duration: 100 }) :
+        $indicator.stop().animate({
+          opacity: opacity
+        }, 100);
+    }
+
+  });
+</script>
+
+<script type="text/javascript" id="sidebar.nav">
+  $(document).ready(function () {
+    var html = $('html');
+    var TAB_ANIMATE_DURATION = 200;
+    var hasVelocity = $.isFunction(html.velocity);
+
+    $('.sidebar-nav li').on('click', function () {
+      var item = $(this);
+      var activeTabClassName = 'sidebar-nav-active';
+      var activePanelClassName = 'sidebar-panel-active';
+      if (item.hasClass(activeTabClassName)) {
+        return;
+      }
+
+      var currentTarget = $('.' + activePanelClassName);
+      var target = $('.' + item.data('target'));
+
+      hasVelocity ?
+        currentTarget.velocity('transition.slideUpOut', TAB_ANIMATE_DURATION, function () {
+          target
+            .velocity('stop')
+            .velocity('transition.slideDownIn', TAB_ANIMATE_DURATION)
+            .addClass(activePanelClassName);
+        }) :
+        currentTarget.animate({ opacity: 0 }, TAB_ANIMATE_DURATION, function () {
+          currentTarget.hide();
+          target
+            .stop()
+            .css({'opacity': 0, 'display': 'block'})
+            .animate({ opacity: 1 }, TAB_ANIMATE_DURATION, function () {
+              currentTarget.removeClass(activePanelClassName);
+              target.addClass(activePanelClassName);
+            });
+        });
+
+      item.siblings().removeClass(activeTabClassName);
+      item.addClass(activeTabClassName);
+    });
+
+    $('.post-toc a').on('click', function (e) {
+      e.preventDefault();
+      var targetSelector = escapeSelector(this.getAttribute('href'));
+      var offset = $(targetSelector).offset().top;
+      hasVelocity ?
+        html.velocity('stop').velocity('scroll', {
+          offset: offset  + 'px',
+          mobileHA: false
+        }) :
+        $('html, body').stop().animate({
+          scrollTop: offset
+        }, 500);
+    });
+
+    // Expand sidebar on post detail page by default, when post has a toc.
+    motionMiddleWares.sidebar = function () {
+      var $tocContent = $('.post-toc-content');
+      if (CONFIG.sidebar === 'post') {
+        if ($tocContent.length > 0 && $tocContent.html().trim().length > 0) {
+          displaySidebar();
+        }
+      }
+    };
+  });
+</script>
+
+
+
+  <script type="text/javascript" src="/js/bootstrap.js"></script>
+
+  
+  
+
+  
+  
+
+</body>
+</html>

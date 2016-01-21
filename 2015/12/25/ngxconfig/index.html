@@ -260,7 +260,7 @@
 <p>由于数组存放的是同一类型的数据。因此，必须有一个<strong>模块基类</strong>来抽象的定义所有模块。这个<strong>抽象基类</strong>就是<code>ngx_module_t</code>。</p>
 <p>因此，可以看到<code>ngx_modules</code>数组里存放的是<code>ngx_module_t *</code>类型指针，<strong>并且，最后一个一定是空指针<code>NULL</code></strong>。</p>
 <p>将最后一个元素置为空指针<code>NULL</code>，是为了遍历数组的时候，标记数组结束，这样不必在使用时记录数组大小。</p>
-<p>例如:<br><figure class="highlight matlab"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> (<span class="built_in">i</span> = <span class="number">0</span>; ngx_modules<span class="matrix">[i]</span>; <span class="built_in">i</span>++) <span class="cell">&#123;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span></span><br></pre></td></tr></table></figure></p>
+<p>例如:<br><figure class="highlight gcode"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">for <span class="comment">(i = 0; ngx_modules[i]; i++)</span> &#123;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
 <p>使用<code>extern ngx_module_t  ngx_core_module;</code>使编译器在编译的时候不去处理<code>ngx_core_module</code>，在链接阶段，再将<code>ngx_core_module</code>链接到正确的地址中。</p>
 <p>类似地，在源文件<code>core\ngx_conf_file.h</code>的末尾声明外部<code>ngx_modules[]</code></p>
 <figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">extern</span> <span class="keyword">ngx_module_t</span>  *ngx_modules[];</span><br></pre></td></tr></table></figure>
@@ -273,7 +273,7 @@
 <p><code>type</code>变量是指模块的类型。<code>Nginx</code>中模块的类型定义如下：<br><figure class="highlight stylus"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="hexcolor">#def</span>ine NGX_CORE_MODULE      <span class="number">0</span>x45524F43  <span class="comment">/* "CORE" */</span></span><br><span class="line"><span class="hexcolor">#def</span>ine NGX_CONF_MODULE      <span class="number">0</span>x464E4F43  <span class="comment">/* "CONF" */</span></span><br><span class="line"><span class="hexcolor">#def</span>ine NGX_EVENT_MODULE     <span class="number">0</span>x544E5645  <span class="comment">/* "EVNT" */</span></span><br><span class="line"><span class="hexcolor">#def</span>ine NGX_HTTP_MODULE      <span class="number">0</span>x50545448  <span class="comment">/* "HTTP" */</span></span><br><span class="line"><span class="hexcolor">#def</span>ine NGX_MAIL_MODULE      <span class="number">0</span>x4C49414D  <span class="comment">/* "MAIL" */</span></span><br></pre></td></tr></table></figure></p>
 <p>也就是说，<code>Nginx</code>共有5中模块类型<code>CORF</code>、<code>CONF</code>、<code>EVNT</code>、<code>HTTP</code>、<code>MAIL</code>。</p>
 <p><strong>2. index</strong></p>
-<p><code>index</code>变量是指，该模块在<code>ngx_modules</code>数组中的次序，或者说下标。该变量在<code>Nginx</code>执行初始化的时候被初始化，初始化代码位于<code>core\nginx.c</code>的<code>main</code>函数中：<br><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">ngx_max_module = <span class="number">0</span>;</span><br><span class="line"><span class="keyword">for</span> (i = <span class="number">0</span>; ngx_modules[i]; i++) &#123;</span><br><span class="line">    ngx_modules[i]-&gt;index = ngx_max_module++;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p><code>index</code>变量是指，该模块在<code>ngx_modules</code>数组中的次序，或者说下标。该变量在<code>Nginx</code>执行初始化的时候被初始化，初始化代码位于<code>core\nginx.c</code>的<code>main</code>函数中：<br><figure class="highlight autoit"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">ngx_max_module = <span class="number">0</span><span class="comment">;</span></span><br><span class="line"><span class="keyword">for</span> (i = <span class="number">0</span><span class="comment">; ngx_modules[i]; i++) &#123;</span></span><br><span class="line">    ngx_modules[i]-&gt;index = ngx_max_module++<span class="comment">;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
 <p><strong>3. ctx_index</strong></p>
 <p><code>ctx_index</code>是指，在<code>ngx_modules</code>数组中，该模块在相同类型的模块中的次序。</p>
 <p>例如，<code>ngx_modules</code>数组中有多个类型为<code>NGX_EVENT_MODULE</code>的模块，那么其中一个模块的<code>ctx_index</code>初始化如下：</p>
@@ -401,14 +401,14 @@
         <nav class="site-state motion-element">
           <div class="site-state-item site-state-posts">
             <a href="/archives">
-              <span class="site-state-item-count">9</span>
+              <span class="site-state-item-count">10</span>
               <span class="site-state-item-name">日志</span>
             </a>
           </div>
 
           <div class="site-state-item site-state-categories">
             
-              <span class="site-state-item-count">3</span>
+              <span class="site-state-item-count">4</span>
               <span class="site-state-item-name">分类</span>
               
           </div>
